@@ -1,0 +1,9 @@
+
+{
+  "name": "Nexchakra Training Portal",
+  "description": "An advanced training platform for school and college students featuring AI-powered resume building, mock interviews, and real-world product development tracks.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
