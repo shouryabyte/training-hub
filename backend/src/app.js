@@ -23,17 +23,70 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+function normalizeOrigin(value) {
+  return String(value || "").trim().replace(/\/$/, "");
+}
+
+function isOriginAllowed(origin, rules) {
+  const o = normalizeOrigin(origin);
+  if (!o) return true;
+  if (!Array.isArray(rules) || rules.length === 0) return true;
+
+  for (const rawRule of rules) {
+    const rule = normalizeOrigin(rawRule);
+    if (!rule) continue;
+    if (rule === "*") return true;
+
+    if (rule === o) return true;
+
+    // Support wildcard domains:
+    // - "*.vercel.app" (any scheme)
+    // - "https://*.vercel.app" (scheme-specific)
+    // - "http://*.example.com:3000" (scheme/port-specific)
+    if (rule.includes("*")) {
+      try {
+        const r = rule.startsWith("http") ? rule : `https://${rule}`;
+        const ru = new URL(r);
+        const ou = new URL(o);
+
+        const schemeOk = !rule.startsWith("http") || ru.protocol === ou.protocol;
+        const portOk = !ru.port || ru.port === ou.port;
+        const hostPattern = ru.hostname;
+
+        if (schemeOk && portOk && hostPattern.startsWith("*.")) {
+          const suffix = hostPattern.slice(1); // ".vercel.app"
+          if (ou.hostname.endsWith(suffix)) return true;
+        }
+      } catch {
+        // ignore malformed rules
+      }
+    }
+
+    // Support regex rules: "regex:^https://.+\\.vercel\\.app$"
+    if (rule.toLowerCase().startsWith("regex:")) {
+      const pattern = rule.slice(6);
+      try {
+        const re = new RegExp(pattern);
+        if (re.test(o)) return true;
+      } catch {
+        // ignore invalid regex
+      }
+    }
+  }
+
+  return false;
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowed = (process.env.CORS_ORIGIN || "")
+      const allowed = String(process.env.CORS_ORIGIN || "")
         .split(",")
         .map((v) => v.trim())
         .filter(Boolean);
       if (!origin) return callback(null, true);
-      if (allowed.length === 0) return callback(null, true);
-      if (allowed.includes(origin)) return callback(null, true);
-      return callback(new Error("CORS not allowed"), false);
+      if (isOriginAllowed(origin, allowed)) return callback(null, true);
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
