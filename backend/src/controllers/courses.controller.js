@@ -2,14 +2,41 @@ const Batch = require("../models/Batch");
 const Division = require("../models/Division");
 const { slugify } = require("../utils/slug");
 
+const COURSES_TTL_MS = Math.max(5_000, Number(process.env.PUBLIC_COURSES_TTL_MS || 60_000));
+const coursesCache = new Map(); // key -> { ts, data }
+
+function getCacheKey(batchName) {
+  return batchName ? `batch:${batchName}` : "all";
+}
+
 async function listCourses(req, res) {
   const batchName = String(req.query.batch || "").toUpperCase();
+  const normalizedBatch = batchName === "ALPHA" || batchName === "DELTA" ? batchName : "";
+  const cacheKey = getCacheKey(normalizedBatch);
+
+  const hit = coursesCache.get(cacheKey);
+  const now = Date.now();
+  if (hit && now - hit.ts < COURSES_TTL_MS) {
+    res.set("Cache-Control", `public, max-age=${Math.floor(COURSES_TTL_MS / 1000)}, stale-while-revalidate=300`);
+    res.set("Vary", "Origin");
+    return res.json(hit.data);
+  }
+
   const q = { isActive: true };
   if (batchName === "ALPHA" || batchName === "DELTA") {
-    const batch = await Batch.findOne({ name: batchName }).select("_id");
+    const batch = await Batch.findOne({ name: batchName }).select("_id").lean();
     if (batch) q.batch = batch._id;
   }
-  const courses = await Division.find(q).populate("batch").sort({ sortOrder: 1, name: 1 });
+
+  const courses = await Division.find(q)
+    .select("name slug batch hasResumeTrack shortDescription description highlights outcomes sortOrder isActive")
+    .populate({ path: "batch", select: "name description" })
+    .sort({ sortOrder: 1, name: 1 })
+    .lean();
+
+  coursesCache.set(cacheKey, { ts: now, data: courses });
+  res.set("Cache-Control", `public, max-age=${Math.floor(COURSES_TTL_MS / 1000)}, stale-while-revalidate=300`);
+  res.set("Vary", "Origin");
   return res.json(courses);
 }
 
@@ -17,7 +44,11 @@ async function listCoursesAdmin(req, res) {
   const batchId = String(req.query.batchId || "");
   const q = {};
   if (batchId) q.batch = batchId;
-  const courses = await Division.find(q).populate("batch").sort({ sortOrder: 1, name: 1 });
+  const courses = await Division.find(q)
+    .select("name slug batch hasResumeTrack shortDescription description highlights outcomes sortOrder isActive teacher")
+    .populate({ path: "batch", select: "name description" })
+    .sort({ sortOrder: 1, name: 1 })
+    .lean();
   return res.json(courses);
 }
 
@@ -27,7 +58,11 @@ async function listCoursesTeacher(req, res) {
   // that were created before ownership was introduced.
   const q = { $or: [{ teacher: req.user.id }, { teacher: null }] };
   if (batchId) q.batch = batchId;
-  const courses = await Division.find(q).populate("batch").sort({ sortOrder: 1, name: 1 });
+  const courses = await Division.find(q)
+    .select("name slug batch hasResumeTrack shortDescription description highlights outcomes sortOrder isActive teacher")
+    .populate({ path: "batch", select: "name description" })
+    .sort({ sortOrder: 1, name: 1 })
+    .lean();
   return res.json(courses);
 }
 

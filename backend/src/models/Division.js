@@ -27,5 +27,6 @@ const divisionSchema = new mongoose.Schema(
 
 divisionSchema.index({ batch: 1, name: 1 }, { unique: true });
 divisionSchema.index({ batch: 1, slug: 1 }, { unique: true });
+divisionSchema.index({ batch: 1, isActive: 1, sortOrder: 1 });
 
 module.exports = mongoose.model("Division", divisionSchema);

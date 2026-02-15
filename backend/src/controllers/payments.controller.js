@@ -80,10 +80,13 @@ async function checkout(req, res) {
   );
   if (!plan) return res.status(404).json({ message: "Plan not found" });
 
+  const paymentTestMode = String(process.env.PAYMENT_TEST_MODE || "").toLowerCase() === "true";
+  const orderAmount = paymentTestMode ? 100 : plan.amount;
+
   assertRazorpayConfigured();
   const provider = "razorpay";
   const order = await createProgramOrder({
-    amount: plan.amount,
+    amount: orderAmount,
     currency: plan.currency,
     notes: { userId: String(req.user.id), planKey: plan.key },
   });
@@ -94,7 +97,7 @@ async function checkout(req, res) {
     batchId: plan.batch,
     provider,
     status: "pending",
-    amount: plan.amount,
+    amount: orderAmount,
     currency: plan.currency,
     providerCheckoutId: order.id,
     metadata: { planKey: plan.key },

@@ -17,5 +17,6 @@ const programPlanSchema = new mongoose.Schema(
 );
 
 programPlanSchema.index({ batch: 1, key: 1 });
+programPlanSchema.index({ isActive: 1, createdAt: 1 });
 
 module.exports = mongoose.model("ProgramPlan", programPlanSchema);
