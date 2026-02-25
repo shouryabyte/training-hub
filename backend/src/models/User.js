@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, enum: ["ADMIN", "TEACHER", "STUDENT"], default: "STUDENT" },
     batch: { type: mongoose.Schema.Types.ObjectId, ref: "Batch" },
+    emailVerified: { type: Boolean, default: true, index: true },
+    authProvider: { type: String, enum: ["local", "google"], default: "local" },
   },
   { timestamps: true }
 );

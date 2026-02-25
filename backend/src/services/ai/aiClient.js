@@ -24,7 +24,7 @@ function geminiModel() {
 }
 
 
-async function callGroqJson({ system, user }) {
+async function callGroqJson({ system, user, temperature = 0.4 }) {
   const key = requireGroqKey();
 
   const model = process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
@@ -36,7 +36,7 @@ async function callGroqJson({ system, user }) {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.4,
+      temperature,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -54,7 +54,7 @@ async function callGroqJson({ system, user }) {
   return safeJsonFromText(text);
 }
 
-async function callGroqText({ system, user }) {
+async function callGroqText({ system, user, temperature = 0.4 }) {
   const key = requireGroqKey();
 
   const model = process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
@@ -66,7 +66,7 @@ async function callGroqText({ system, user }) {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.4,
+      temperature,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -82,7 +82,7 @@ async function callGroqText({ system, user }) {
   return data?.choices?.[0]?.message?.content || "";
 }
 
-async function callGeminiText({ system, user }) {
+async function callGeminiText({ system, user, temperature = 0.4 }) {
   const key = requireGeminiKey();
   const model = geminiModel();
 
@@ -94,7 +94,7 @@ async function callGeminiText({ system, user }) {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
-        generationConfig: { temperature: 0.4 },
+        generationConfig: { temperature },
       }),
     }
   );
@@ -108,22 +108,23 @@ async function callGeminiText({ system, user }) {
   return text;
 }
 
-async function callGeminiJson({ system, user }) {
+async function callGeminiJson({ system, user, temperature = 0.4 }) {
   const text = await callGeminiText({
     system: `${system}\nReturn JSON only. No markdown, no commentary.`,
     user,
+    temperature,
   });
   return safeJsonFromText(text);
 }
 
-async function generateJson({ system, user }) {
-  if (provider() === "gemini") return callGeminiJson({ system, user });
-  return callGroqJson({ system, user });
+async function generateJson({ system, user, temperature }) {
+  if (provider() === "gemini") return callGeminiJson({ system, user, temperature });
+  return callGroqJson({ system, user, temperature });
 }
 
-async function generateText({ system, user }) {
-  if (provider() === "gemini") return callGeminiText({ system, user });
-  return callGroqText({ system, user });
+async function generateText({ system, user, temperature }) {
+  if (provider() === "gemini") return callGeminiText({ system, user, temperature });
+  return callGroqText({ system, user, temperature });
 }
 
 module.exports = { generateJson, generateText };

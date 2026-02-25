@@ -95,6 +95,9 @@ async function reqJson(baseUrl, path, { method = "GET", token, body } = {}) {
 
 async function main() {
   loadEnv();
+  // Keep smoke tests stable regardless of whether email verification is enabled in local/prod envs.
+  if (process.env.REQUIRE_EMAIL_VERIFICATION === "true") process.env.REQUIRE_EMAIL_VERIFICATION = "false";
+  if (process.env.EMAIL_OTP_ENABLED === "true") process.env.EMAIL_OTP_ENABLED = "false";
 
   const app = require("../app");
   await connectDb();

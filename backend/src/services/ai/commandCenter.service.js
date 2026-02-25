@@ -1,12 +1,27 @@
 const { generateJson, generateText } = require("./aiClient");
 const { resumeAnalyzeFallback, roadmapFallback } = require("./fallback");
+const { cacheKey, getCachedResponse, setCachedResponse, normalizeText } = require("../../utils/aiCache");
 
 async function analyzeResume({ resumeText, category }) {
+  const normalized = normalizeText(resumeText);
+  const version = "resume-analyze:v2";
+  const key = cacheKey({ feature: "resume-analyze", version, parts: [category || "", normalized] });
+  const cached = await getCachedResponse({ key });
+  if (cached?.response) return { provider: cached.provider || "cache", ...cached.response };
+
   const system =
     "You are a professional career coach and hiring manager. Output strictly valid JSON only.";
-  const user = `Analyze this resume for a ${category} student.\nResume Text:\n${resumeText}\n\nReturn JSON with properties:\n- feedback (string)\n- suggestions (string[])\n- score (0-100)\n`;
+  const user = `Analyze this resume for a ${category} student.\nResume Text:\n${normalized}\n\nReturn JSON with properties:\n- feedback (string, 6-12 sentences, structured with headings)\n- suggestions (string[], 6-14, concrete ATS-safe actions)\n- score (0-100)\n\nRules:\n- Be deterministic: for the same input, return the same score and suggestions.\n- Do not hallucinate details not present in the resume.\n`;
   try {
-    const result = await generateJson({ system, user });
+    const result = await generateJson({ system, user, temperature: 0 });
+    await setCachedResponse({
+      key,
+      feature: "resume-analyze",
+      provider: "ai",
+      model: String(process.env.AI_PROVIDER || ""),
+      response: result,
+      ttlMs: Number(process.env.AI_CACHE_TTL_MS || 30 * 24 * 60 * 60 * 1000),
+    });
     return { provider: "ai", ...result };
   } catch (_err) {
     return resumeAnalyzeFallback(resumeText, category);
@@ -29,11 +44,25 @@ async function mockInterviewQuestion({ role, level, history }) {
 }
 
 async function generateCareerRoadmap({ targetRole, currentSkills }) {
+  const normalizedSkills = normalizeText(currentSkills);
+  const version = "career-roadmap:v2";
+  const key = cacheKey({ feature: "career-roadmap", version, parts: [targetRole || "", normalizedSkills] });
+  const cached = await getCachedResponse({ key });
+  if (cached?.response) return { provider: cached.provider || "cache", ...cached.response };
+
   const system =
     "You are a senior career strategist. Output strictly valid JSON only.";
-  const user = `Generate a 6-month career roadmap for a student aiming to become a ${targetRole}.\nCurrent skills: ${currentSkills}\n\nReturn JSON array of objects, each with:\n- month (string)\n- milestone (string)\n- tasks (string[])\n`;
+  const user = `Generate a 6-month career roadmap for a student aiming to become a ${targetRole}.\nCurrent skills: ${normalizedSkills}\n\nReturn JSON with keys:\n- summary (string, 4-8 sentences)\n- monthlyPlan (array of { month: string, milestone: string, tasks: string[], projects: string[], checkpoint: string })\n- weeklyKickstart (array of { week: number, focus: string, deliverables: string[] } for the first 4 weeks)\n- skillPriorityOrder (string[])\n- nextActions (string[], 5-10)\n- commonPitfalls (string[], 4-10)\n\nRules:\n- Be deterministic for the same input.\n- Keep tasks measurable and time-boxed.\n`;
   try {
-    const result = await generateJson({ system, user });
+    const result = await generateJson({ system, user, temperature: 0 });
+    await setCachedResponse({
+      key,
+      feature: "career-roadmap",
+      provider: "ai",
+      model: String(process.env.AI_PROVIDER || ""),
+      response: result,
+      ttlMs: Number(process.env.AI_CACHE_TTL_MS || 30 * 24 * 60 * 60 * 1000),
+    });
     return { provider: "ai", ...result };
   } catch (_err) {
     return roadmapFallback(targetRole, currentSkills);

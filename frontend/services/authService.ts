@@ -9,17 +9,25 @@ export type AuthUser = {
 
 export type AuthResponse = {
   message: string;
-  token: string;
-  user: AuthUser;
+  token?: string;
+  user?: AuthUser;
+  verificationRequired?: boolean;
 };
 
-export async function register(payload: { name: string; email: string; password: string; adminInviteKey?: string; teacherInviteKey?: string }) {
+export async function register(payload: {
+  name: string;
+  email: string;
+  password: string;
+  role?: 'ADMIN' | 'TEACHER' | 'STUDENT';
+  adminInviteKey?: string;
+  teacherInviteKey?: string;
+}) {
   const data = await apiJson<AuthResponse>('/api/auth/register', {
     method: 'POST',
     auth: false,
     body: JSON.stringify(payload),
   });
-  setAuthToken(data.token);
+  if (data?.token) setAuthToken(data.token);
   return data;
 }
 
@@ -29,7 +37,33 @@ export async function login(payload: { email: string; password: string }) {
     auth: false,
     body: JSON.stringify(payload),
   });
-  setAuthToken(data.token);
+  if (data?.token) setAuthToken(data.token);
+  return data;
+}
+
+export async function requestEmailOtp(payload: { email: string; purpose?: string }) {
+  return apiJson<{ success: boolean }>('/api/auth/otp/request', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verifyEmailOtp(payload: { email: string; code: string; purpose?: string }) {
+  return apiJson<{ success: boolean }>('/api/auth/otp/verify', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function googleLogin(payload: { credential: string }) {
+  const data = await apiJson<AuthResponse>('/api/auth/google', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(payload),
+  });
+  if (data?.token) setAuthToken(data.token);
   return data;
 }
 

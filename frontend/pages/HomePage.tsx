@@ -73,9 +73,9 @@ export const HomePage: React.FC = () => {
 
   return (
     <div>
-      <section className="px-6">
+      <section className="px-4 sm:px-6">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
-          <div className="py-16">
+          <div className="py-12 sm:py-16">
             <p className="mono text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-4">Trust-First EdTech Platform</p>
             <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-[1.05]">
               Build foundations. Ship projects. Earn outcomes.
@@ -110,8 +110,8 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="py-16">
-            <div className="glass-card rounded-[3rem] border-white/10 p-10 relative overflow-hidden">
+          <div className="py-12 sm:py-16">
+            <div className="glass-card rounded-[3rem] border-white/10 p-7 sm:p-10 relative overflow-hidden">
               <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-[80px]"></div>
               <p className="mono text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4">Company & Trust</p>
               <div className="space-y-6">
@@ -182,7 +182,7 @@ export const HomePage: React.FC = () => {
           )}
 
           <div className="space-y-14">
-            <div className="glass-card rounded-[3rem] border-white/10 p-10 relative overflow-hidden">
+            <div className="glass-card rounded-[3rem] border-white/10 p-7 sm:p-10 relative overflow-hidden">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-[80px]"
@@ -193,7 +193,7 @@ export const HomePage: React.FC = () => {
                   <h3 className="text-3xl font-black text-white tracking-tight">Class 11 & 12 Foundation</h3>
                   <p className="text-slate-400 font-medium mt-3 max-w-2xl">Preparing the global elite for top-tier academic entries.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <Link
                     to="/alpha"
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 text-center"
@@ -231,7 +231,7 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="glass-card rounded-[3rem] border-white/10 p-10 relative overflow-hidden">
+            <div className="glass-card rounded-[3rem] border-white/10 p-7 sm:p-10 relative overflow-hidden">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 bg-purple-500/10 rounded-full blur-[80px]"
@@ -242,7 +242,7 @@ export const HomePage: React.FC = () => {
                   <h3 className="text-3xl font-black text-white tracking-tight">University Acceleration</h3>
                   <p className="text-slate-400 font-medium mt-3 max-w-2xl">Securing high-package placements through technical dominance.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <Link
                     to="/delta"
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 text-center"

@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import pdfWorkerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min?url';
 import {
   InterviewMode,
   InterviewTurn,
@@ -18,6 +20,8 @@ export const AiLabsPage: React.FC = () => {
   const isLoggedIn = Boolean(token);
 
   const [resumeText, setResumeText] = useState('');
+  const [resumeFileName, setResumeFileName] = useState<string | null>(null);
+  const [resumeUploadLoading, setResumeUploadLoading] = useState(false);
   const [resumeResult, setResumeResult] = useState<ResumeEvalResult | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
 
@@ -35,6 +39,9 @@ export const AiLabsPage: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const transcriptRef = useRef('');
+  const liveTranscriptRef = useRef('');
+  const [answerDraft, setAnswerDraft] = useState('');
+  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
   const submitOnEndRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
   const timerRef = useRef<any>(null);
@@ -42,6 +49,54 @@ export const AiLabsPage: React.FC = () => {
   const title = useMemo(() => 'AI Labs', []);
 
   const requireLogin = () => nav(`/auth?returnTo=${encodeURIComponent('/ai-labs')}`);
+
+  const extractTextFromPdf = async (file: File) => {
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+    const buf = await file.arrayBuffer();
+    let doc: any;
+    try {
+      doc = await (pdfjsLib as any).getDocument({ data: buf }).promise;
+    } catch {
+      doc = await (pdfjsLib as any).getDocument({ data: buf, disableWorker: true }).promise;
+    }
+    const maxPages = Math.min(doc.numPages || 1, 10);
+    let text = '';
+    for (let i = 1; i <= maxPages; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      const page = await doc.getPage(i);
+      // eslint-disable-next-line no-await-in-loop
+      const content = await page.getTextContent();
+      const parts = (content?.items || []).map((it: any) => String(it?.str || '')).filter(Boolean);
+      text += `${parts.join(' ')}\n`;
+    }
+    return text.trim();
+  };
+
+  const handleResumeFile = async (file: File | null) => {
+    if (!file) return;
+    setResumeUploadLoading(true);
+    setResumeFileName(file.name);
+    setResumeResult(null);
+    try {
+      const isPdf = String(file.type || '').toLowerCase().includes('pdf') || file.name.toLowerCase().endsWith('.pdf');
+      const isText = String(file.type || '').toLowerCase().includes('text') || /\.(txt|md)$/i.test(file.name);
+      let extracted = '';
+      if (isPdf) extracted = await extractTextFromPdf(file);
+      else if (isText) extracted = String(await file.text());
+      else extracted = String(await file.text());
+
+      const cleaned = extracted.replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+      if (!cleaned) {
+        window.alert('Could not extract readable text from this file. Try a text-based PDF or paste your resume text.');
+        return;
+      }
+      setResumeText(cleaned);
+    } catch (e: any) {
+      window.alert(e?.message || 'Failed to read resume file. Try a .pdf or paste text.');
+    } finally {
+      setResumeUploadLoading(false);
+    }
+  };
 
   const handleResume = async () => {
     if (!isLoggedIn) return requireLogin();
@@ -104,6 +159,22 @@ export const AiLabsPage: React.FC = () => {
     setListening(false);
   };
 
+  const resetInterview = () => {
+    try {
+      recognitionRef.current?.abort?.();
+    } catch {
+      // ignore
+    }
+    clearVoiceTimer();
+    setListening(false);
+    transcriptRef.current = '';
+    liveTranscriptRef.current = '';
+    setAnswerDraft('');
+    setHistory([]);
+    setLastFeedback(null);
+    setQuestion('Tell me about yourself and your strongest technical skill.');
+  };
+
   const submitTranscript = async (transcript: string) => {
     if (!isLoggedIn) return requireLogin();
     setVoiceLoading(true);
@@ -113,6 +184,9 @@ export const AiLabsPage: React.FC = () => {
       setHistory(newHistory);
       setLastFeedback(r);
       if (r.nextQuestion) setQuestion(r.nextQuestion);
+      setAnswerDraft('');
+      transcriptRef.current = '';
+      liveTranscriptRef.current = '';
     } catch (e: any) {
       window.alert(e?.data?.message || e?.message || 'Voice interview failed');
     } finally {
@@ -124,11 +198,15 @@ export const AiLabsPage: React.FC = () => {
     if (!isLoggedIn) return requireLogin();
     const rec = ensureSpeechApi();
     if (!rec) {
+      setSpeechSupported(false);
       window.alert('Speech Recognition not supported in this browser. Use Chrome.');
       return;
     }
+    setSpeechSupported(true);
 
     transcriptRef.current = '';
+    liveTranscriptRef.current = '';
+    setAnswerDraft('');
     submitOnEndRef.current = true;
     startedAtRef.current = Date.now();
     setSecondsLeft(60);
@@ -138,7 +216,12 @@ export const AiLabsPage: React.FC = () => {
       const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
       const left = Math.max(0, 60 - elapsedSec);
       setSecondsLeft(left);
-      if (left <= 0) stopListening({ submit: true });
+      if (left <= 0) {
+        const t = transcriptRef.current.trim();
+        submitOnEndRef.current = false;
+        stopListening({ submit: false });
+        if (t.length >= 2) void submitTranscript(t);
+      }
     }, 250);
 
     setListening(true);
@@ -147,7 +230,12 @@ export const AiLabsPage: React.FC = () => {
       if (!results) return;
       let full = '';
       for (let i = 0; i < results.length; i += 1) full += (results[i]?.[0]?.transcript || '') + ' ';
-      if (full.trim()) transcriptRef.current = full.trim();
+      const cleaned = full.trim();
+      if (cleaned) {
+        transcriptRef.current = cleaned;
+        liveTranscriptRef.current = cleaned;
+        setAnswerDraft(cleaned);
+      }
     };
     rec.onerror = () => stopListening({ submit: false });
     rec.onend = async () => {
@@ -156,7 +244,7 @@ export const AiLabsPage: React.FC = () => {
       clearVoiceTimer();
       submitOnEndRef.current = false;
       setListening(false);
-      if (shouldSubmit && transcript.length >= 2) await submitTranscript(transcript);
+      if (shouldSubmit && transcript.length >= 2) setAnswerDraft(transcript);
     };
     try {
       rec.start();
@@ -168,7 +256,7 @@ export const AiLabsPage: React.FC = () => {
   };
 
   return (
-    <div className="px-6 pb-20">
+    <div className="px-4 sm:px-6 pb-16 sm:pb-20">
       <div className="max-w-7xl mx-auto">
         <div className="mb-12">
           <p className="mono text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-4">Tools • Public</p>
@@ -186,9 +274,23 @@ export const AiLabsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="glass-card rounded-[2.5rem] border-white/10 p-8 lg:col-span-1">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="glass-card rounded-[2.5rem] border-white/10 p-6 sm:p-8 lg:col-span-1">
             <h2 className="text-2xl font-black text-white tracking-tight mb-6">Resume Evaluator</h2>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <label className="bg-white/5 hover:bg-white/10 text-white px-5 py-3 rounded-2xl transition-all font-black text-xs uppercase tracking-widest border border-white/10 active:scale-95 cursor-pointer text-center">
+                Upload Resume
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md"
+                  className="hidden"
+                  onChange={(e) => void handleResumeFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              <div className="text-slate-500 text-xs font-bold uppercase tracking-widest truncate">
+                {resumeUploadLoading ? 'Reading...' : resumeFileName ? resumeFileName : 'PDF/TXT'}
+              </div>
+            </div>
             <textarea
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
@@ -221,6 +323,32 @@ export const AiLabsPage: React.FC = () => {
                   </div>
                 </div>
 
+                {!!resumeResult.atsBreakdown && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">ATS Breakdown</p>
+                    <div className="grid grid-cols-2 gap-3 text-slate-300 text-xs font-medium">
+                      <div>
+                        Formatting: <span className="text-white font-black">{resumeResult.atsBreakdown.formatting ?? '-'}</span>
+                      </div>
+                      <div>
+                        Keywords: <span className="text-white font-black">{resumeResult.atsBreakdown.keywords ?? '-'}</span>
+                      </div>
+                      <div>
+                        Structure: <span className="text-white font-black">{resumeResult.atsBreakdown.structure ?? '-'}</span>
+                      </div>
+                      <div>
+                        Impact: <span className="text-white font-black">{resumeResult.atsBreakdown.experienceImpact ?? '-'}</span>
+                      </div>
+                      <div>
+                        Skills: <span className="text-white font-black">{resumeResult.atsBreakdown.skills ?? '-'}</span>
+                      </div>
+                      <div>
+                        Education: <span className="text-white font-black">{resumeResult.atsBreakdown.education ?? '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {!!(resumeResult.topStrengths || []).length && (
                   <div className="mt-4">
                     <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Top Strengths</p>
@@ -238,11 +366,45 @@ export const AiLabsPage: React.FC = () => {
                     </p>
                   </div>
                 )}
+                {!!(resumeResult.improvementSuggestions || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Improvements (Actionable)</p>
+                    <ul className="list-disc pl-5 space-y-1 text-slate-300 text-xs font-medium leading-relaxed">
+                      {(resumeResult.improvementSuggestions || []).slice(0, 10).map((t, idx) => (
+                        <li key={idx}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {!!(resumeResult.rewriteExamples || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Rewrite Examples</p>
+                    <div className="space-y-3">
+                      {(resumeResult.rewriteExamples || []).slice(0, 3).map((ex, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Before</p>
+                          <p className="text-slate-300 text-xs font-medium mt-1 whitespace-pre-line">{ex.before}</p>
+                          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-3">After</p>
+                          <p className="text-white text-xs font-medium mt-1 whitespace-pre-line">{ex.after}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!!(resumeResult.keywordTargets || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Keyword Targets</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">
+                      {(resumeResult.keywordTargets || []).slice(0, 14).join(' • ')}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          <div className="glass-card rounded-[2.5rem] border-white/10 p-8 lg:col-span-1">
+          <div className="glass-card rounded-[2.5rem] border-white/10 p-6 sm:p-8 lg:col-span-1">
             <h2 className="text-2xl font-black text-white tracking-tight mb-6">Voice-AI Mock Interview</h2>
             <div className="space-y-4">
               <select
@@ -258,12 +420,37 @@ export const AiLabsPage: React.FC = () => {
                 <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-3">Current Question</p>
                 <p className="text-white font-bold">{question}</p>
               </div>
+              <textarea
+                value={answerDraft}
+                onChange={(e) => setAnswerDraft(e.target.value)}
+                className="w-full h-28 bg-slate-950/60 border border-white/10 rounded-2xl p-5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="Type your answer here (or record it below)."
+              />
+              {speechSupported === false && (
+                <p className="text-slate-400 text-xs font-medium">
+                  Speech Recognition isn't available in this browser. Type your answer and submit.
+                </p>
+              )}
               <button
                 onClick={() => (listening ? stopListening({ submit: true }) : startListening())}
                 disabled={voiceLoading}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95"
               >
                 {voiceLoading ? 'Processing…' : listening ? 'Stop' : 'Start Mock Interview'}
+              </button>
+              <button
+                onClick={() => void submitTranscript(String(answerDraft || '').trim())}
+                disabled={voiceLoading || !String(answerDraft || '').trim()}
+                className="w-full bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest border border-white/10 transition-all active:scale-95"
+              >
+                Submit Answer
+              </button>
+              <button
+                onClick={resetInterview}
+                disabled={voiceLoading}
+                className="w-full bg-transparent hover:bg-white/5 disabled:opacity-50 text-slate-200 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-white/10 transition-all active:scale-95"
+              >
+                Reset Interview
               </button>
               {listening && (
                 <p className="text-slate-400 text-xs font-medium">
@@ -318,7 +505,7 @@ export const AiLabsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="glass-card rounded-[2.5rem] border-white/10 p-8 lg:col-span-1">
+          <div className="glass-card rounded-[2.5rem] border-white/10 p-6 sm:p-8 lg:col-span-1">
             <h2 className="text-2xl font-black text-white tracking-tight mb-6">Roadmap Creator</h2>
             <input
               value={target}
@@ -330,19 +517,133 @@ export const AiLabsPage: React.FC = () => {
               value={currentKnowledge}
               onChange={(e) => setCurrentKnowledge(e.target.value)}
               className="mt-4 w-full h-40 bg-slate-950/60 border border-white/10 rounded-2xl p-5 text-white font-medium"
-              placeholder="Current knowledge base…"
+              placeholder="Current knowledge base..."
             />
             <button
               onClick={() => void handleRoadmap()}
               disabled={roadmapLoading || !target.trim() || !currentKnowledge.trim()}
               className="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95"
             >
-              {roadmapLoading ? 'Generating…' : 'Generate Roadmap'}
+              {roadmapLoading ? 'Generating...' : 'Generate Roadmap'}
             </button>
             {roadmapResult && (
               <div className="mt-6 bg-slate-950/60 border border-white/10 rounded-2xl p-5">
                 <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-3">Roadmap</p>
                 <p className="text-slate-300 text-sm font-medium leading-relaxed">{roadmapResult.summary || '—'}</p>
+                {!!(roadmapResult.phases || []).length && (
+                  <div className="mt-5">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">6-Phase Breakdown</p>
+                    <div className="space-y-4">
+                      {(roadmapResult.phases || []).slice(0, 6).map((p) => (
+                        <div key={p.phase} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                          <p className="text-white font-black text-sm">
+                            {p.phase}. {p.title}
+                          </p>
+                          <ul className="mt-2 list-disc pl-5 space-y-1 text-slate-300 text-xs font-medium leading-relaxed">
+                            <li>
+                              <span className="text-slate-400 font-black">Objective:</span> {p.objective}
+                            </li>
+                            <li>
+                              <span className="text-slate-400 font-black">Tools/Tech:</span> {p.toolsTechnologies}
+                            </li>
+                            <li>
+                              <span className="text-slate-400 font-black">Implementation:</span> {p.implementationSteps}
+                            </li>
+                            <li>
+                              <span className="text-slate-400 font-black">Outcome:</span> {p.expectedOutcome}
+                            </li>
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!!(roadmapResult.prerequisites || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Prerequisites</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">
+                      {(roadmapResult.prerequisites || []).slice(0, 10).join(' • ')}
+                    </p>
+                  </div>
+                )}
+
+                {!!(roadmapResult.targetStack || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Target Stack</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">
+                      {(roadmapResult.targetStack || []).slice(0, 12).join(' • ')}
+                    </p>
+                  </div>
+                )}
+
+                {!!(roadmapResult.skillPriorityOrder || []).length && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Skill Priority</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">
+                      {(roadmapResult.skillPriorityOrder || []).slice(0, 6).join(' • ')}
+                    </p>
+                  </div>
+                )}
+
+                {!!(roadmapResult.projects || []).length && (
+                  <div className="mt-5">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Projects (Suggested)</p>
+                    <div className="space-y-3">
+                      {(roadmapResult.projects || []).slice(0, 3).map((p, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                          <p className="text-white font-black text-xs">{p.name}</p>
+                          <p className="text-slate-400 text-xs font-medium mt-1 leading-relaxed">{p.description}</p>
+                          {!!(p.stack || []).length && (
+                            <p className="text-slate-300 text-[11px] font-black uppercase tracking-widest mt-3">
+                              Stack: <span className="text-slate-400 font-black normal-case tracking-normal">{(p.stack || []).slice(0, 10).join(', ')}</span>
+                            </p>
+                          )}
+                          {!!(p.acceptanceCriteria || []).length && (
+                            <ul className="mt-3 list-disc pl-5 space-y-1 text-slate-300 text-xs font-medium leading-relaxed">
+                              {(p.acceptanceCriteria || []).slice(0, 5).map((a, j) => (
+                                <li key={j}>{a}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Number.isFinite(Number((roadmapResult.studySystem as any)?.hoursPerWeek)) && (
+                  <div className="mt-4">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Study System</p>
+                    <p className="text-slate-300 text-xs font-medium leading-relaxed">
+                      Hours/week: <span className="text-white font-black">{String((roadmapResult.studySystem as any)?.hoursPerWeek)}</span>
+                    </p>
+                  </div>
+                )}
+
+                {!!(roadmapResult.weeklyPlan || []).length && (
+                  <div className="mt-5">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Weeks 1-3 Preview</p>
+                    {(roadmapResult.weeklyPlan || []).slice(0, 3).map((w, idx) => (
+                      <div key={idx} className="mt-3">
+                        <p className="text-white font-black text-xs">Week {w.week}</p>
+                        <p className="text-slate-400 text-xs font-medium mt-1">{(w.deliverables || w.goals || []).slice(0, 4).join(' • ')}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!!(roadmapResult.monthlyPlan || []).length && (
+                  <div className="mt-5">
+                    <p className="mono text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-2">Monthly Preview</p>
+                    {(roadmapResult.monthlyPlan || []).slice(0, 3).map((m, idx) => (
+                      <div key={idx} className="mt-3">
+                        <p className="text-white font-black text-xs">{m.month}</p>
+                        <p className="text-slate-400 text-xs font-medium mt-1">{(m.projects || m.goals || []).slice(0, 4).join(' • ')}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {(roadmapResult.milestones || []).slice(0, 3).map((m, i) => (
                   <div key={i} className="mt-4">
                     <p className="text-white font-black text-sm">{m.timeframe}</p>

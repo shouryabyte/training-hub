@@ -82,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
 
       {/* Main Content */}
       <main className="flex-1 h-screen overflow-y-auto bg-slate-950 p-8 lg:p-16">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-12 mb-20">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 md:gap-12 mb-12 md:mb-20">
           <div>
             <h1 className="text-5xl font-black text-white mb-3 tracking-tighter">{isSchool ? 'Alpha Command' : 'Delta Command'}</h1>
             <div className="flex items-center gap-4">
@@ -137,7 +137,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
           <CodeHub />
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10 mb-12 md:mb-20">
               {stats.map((stat, i) => (
                 <div key={i} className="glass-card p-10 rounded-[3rem] border-white/5 relative overflow-hidden group hover:translate-y-[-8px] transition-all duration-700 shadow-2xl">
                   <div className={`absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-12 -mt-12 group-hover:${isSchool ? 'bg-emerald-500/10' : 'bg-indigo-500/10'} transition-all duration-1000`}></div>
@@ -156,14 +156,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-16">
               <div className="lg:col-span-2 space-y-16">
                 {/* Progress Card */}
-                <div className="glass-card p-14 rounded-[4rem] border-white/10 relative overflow-hidden shadow-2xl group/main">
+                <div className="glass-card p-7 sm:p-10 lg:p-14 rounded-[2.75rem] sm:rounded-[4rem] border-white/10 relative overflow-hidden shadow-2xl group/main">
                     <div className="absolute top-0 right-0 p-12 opacity-5">
                       <svg className="w-48 h-48 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"></path></svg>
                     </div>
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-12 mb-20 relative z-10">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 md:gap-12 mb-12 md:mb-20 relative z-10">
                       <div>
                           <span className={`${isSchool ? 'text-emerald-400' : 'text-indigo-400'} mono text-[11px] font-black uppercase tracking-[0.5em] mb-4 block`}>Phase 02 // ACCELERATION</span>
                           <h3 className="text-5xl font-black text-white tracking-tighter leading-[0.9] mb-8">{isSchool ? 'Ivy Admissions \n& SAT/JEE Master' : 'Production \nCloud Engineering'}</h3>
@@ -188,7 +188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                       <div className="bg-slate-950/60 p-10 rounded-[3rem] border border-white/5 hover:border-indigo-500/20 transition-all group/card shadow-inner">
                           <p className="mono text-[9px] font-black uppercase tracking-[0.4em] text-slate-600 mb-8">{isSchool ? 'MILESTONE' : 'ACTIVE SPRINT'}</p>
                           <h4 className="text-white font-black mb-3 text-xl leading-tight group-hover/card:text-indigo-400 transition-colors">{isSchool ? 'SOP Narrative Sync' : 'K8s Cluster Opt'}</h4>
@@ -208,7 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
                 </div>
 
                 {/* Skill Tree Visualizer */}
-                <div className="glass-card p-14 rounded-[4rem] border-white/5 shadow-2xl relative overflow-hidden">
+                <div className="glass-card p-7 sm:p-10 lg:p-14 rounded-[2.75rem] sm:rounded-[4rem] border-white/5 shadow-2xl relative overflow-hidden">
                     <div className="flex items-center justify-between mb-16">
                       <h3 className="text-3xl font-black text-white tracking-tighter uppercase">{isSchool ? 'Alpha Talent Tree' : 'Delta Skill Network'}</h3>
                       <div className="flex gap-4">
@@ -248,7 +248,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
 
               {/* Right Sidebar */}
               <div className="space-y-16">
-                <div className={`glass-card p-12 rounded-[4rem] border-${themeColor}-500/20 bg-${themeColor}-600/5 relative overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.5)] group/advisor`}>
+                <div className={`glass-card p-7 sm:p-10 lg:p-12 rounded-[2.75rem] sm:rounded-[4rem] border-${themeColor}-500/20 bg-${themeColor}-600/5 relative overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.5)] group/advisor`}>
                     <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-white/5 rounded-full blur-[60px] group-hover/advisor:scale-150 transition-transform duration-1000"></div>
                     <div className="flex items-center gap-4 mb-12">
                       <div className={`w-12 h-12 rounded-2xl ${isSchool ? 'bg-emerald-600' : 'bg-indigo-600'} flex items-center justify-center shadow-2xl`}>
@@ -256,7 +256,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
                       </div>
                       <h3 className="text-2xl font-black text-white tracking-tighter uppercase leading-none">AI Advisor <br/><span className="mono text-[9px] text-slate-500 tracking-[0.4em]">Neural Core</span></h3>
                     </div>
-                    <div className="bg-slate-950/80 p-10 rounded-[3rem] border border-white/5 mb-12 relative z-10 shadow-inner">
+                    <div className="bg-slate-950/80 p-6 sm:p-8 lg:p-10 rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 mb-10 sm:mb-12 relative z-10 shadow-inner">
                       <p className="text-slate-300 text-lg leading-relaxed italic font-medium">
                           {isSchool ? '"Your essay on AI Ethics is brilliant but lacks personal anecdotes. Admission officers look for empathy over logic. Revise the third paragraph with your volunteer story."' : '"Your system architecture scores are exemplary, but your latency benchmarks are 12% below standard. Focus on Redis caching for the next sprint."'}
                       </p>
@@ -266,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout, category }) => {
                     </button>
                 </div>
 
-                <div className="glass-card p-12 rounded-[4rem] border-white/5 shadow-2xl">
+                <div className="glass-card p-7 sm:p-10 lg:p-12 rounded-[2.75rem] sm:rounded-[4rem] border-white/5 shadow-2xl">
                     <div className="flex items-center justify-between mb-12">
                       <h3 className="text-2xl font-black text-white tracking-tighter uppercase leading-none">{isSchool ? 'Admissions \nConsole' : 'Placement \nPipeline'}</h3>
                       <span className="mono text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-4 py-2 rounded-2xl border border-emerald-500/20">3 ACTIVE</span>

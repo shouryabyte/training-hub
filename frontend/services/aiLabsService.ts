@@ -19,6 +19,14 @@ export type ResumeEvalResult = {
   improvementSuggestions?: string[];
   rewriteExamples?: Array<{ before: string; after: string }>;
   industryAlignment?: string;
+  keywordTargets?: string[];
+  sectionDiagnostics?: {
+    formatting?: { status?: string; issues?: string[]; fixes?: string[] };
+    experience?: { status?: string; issues?: string[]; fixes?: string[] };
+    projects?: { status?: string; issues?: string[]; fixes?: string[] };
+    skills?: { status?: string; issues?: string[]; fixes?: string[] };
+    education?: { status?: string; issues?: string[]; fixes?: string[] };
+  };
 };
 
 export async function resumeEval(resumeText: string) {
@@ -31,6 +39,41 @@ export async function resumeEval(resumeText: string) {
 export type RoadmapResult = {
   provider?: string;
   summary?: string;
+  phases?: Array<{
+    phase: number;
+    title: string;
+    objective: string;
+    toolsTechnologies: string;
+    implementationSteps: string;
+    expectedOutcome: string;
+  }>;
+  prerequisites?: string[];
+  targetStack?: string[];
+  weeklyPlan?: Array<{
+    week: number;
+    goals?: string[];
+    topics?: string[];
+    resources?: string[];
+    deliverables?: string[];
+    assessment?: string;
+  }>;
+  monthlyPlan?: Array<{
+    month: string;
+    goals?: string[];
+    projects?: string[];
+    checkpoints?: string[];
+  }>;
+  projects?: Array<{
+    name: string;
+    description: string;
+    stack?: string[];
+    acceptanceCriteria?: string[];
+  }>;
+  studySystem?: {
+    hoursPerWeek?: number;
+    scheduleTemplate?: string[];
+    reviewLoop?: string[];
+  };
   milestones?: Array<{
     timeframe: string;
     goals: string[];

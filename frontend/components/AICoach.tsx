@@ -80,7 +80,7 @@ export const AICoach: React.FC = () => {
   };
 
   return (
-    <section id="ai-coach" className="py-32 px-6 relative overflow-hidden">
+    <section id="ai-coach" className="py-20 sm:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden">
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full"></div>
       
       <div className="max-w-7xl mx-auto">
@@ -90,12 +90,12 @@ export const AICoach: React.FC = () => {
             <h2 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter leading-tight">Nexchakra <br /><span className="gradient-text">AI Command Center</span></h2>
             <p className="text-slate-400 text-xl font-medium leading-relaxed max-w-2xl">Precision-engineered tools to benchmark, simulate, and accelerate your technical trajectory. Powered by Groq.</p>
           </div>
-          <div className="flex bg-slate-900/60 backdrop-blur-3xl p-2 rounded-[2.5rem] border border-white/10 shadow-2xl">
+          <div className="flex flex-wrap bg-slate-900/60 backdrop-blur-3xl p-2 rounded-[2.5rem] border border-white/10 shadow-2xl gap-1">
             {['resume', 'interview', 'roadmap'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-8 py-4 rounded-[2rem] font-black text-[11px] tracking-widest uppercase transition-all duration-500 flex items-center gap-3 ${activeTab === tab ? 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                className={`px-5 sm:px-8 py-3 sm:py-4 rounded-[2rem] font-black text-[10px] sm:text-[11px] tracking-widest uppercase transition-all duration-500 flex items-center gap-3 ${activeTab === tab ? 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.4)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
               >
                 {tab === 'resume' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>}
                 {tab === 'interview' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>}
@@ -106,7 +106,7 @@ export const AICoach: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass-card rounded-[4rem] border-white/10 p-12 min-h-[750px] shadow-[0_0_120px_rgba(0,0,0,0.6)] flex flex-col relative overflow-hidden">
+        <div className="glass-card rounded-[2.75rem] sm:rounded-[4rem] border-white/10 p-7 sm:p-10 lg:p-12 min-h-[520px] lg:min-h-[750px] shadow-[0_0_120px_rgba(0,0,0,0.6)] flex flex-col relative overflow-hidden">
           <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
             <svg className="w-64 h-64 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"></path></svg>
           </div>
@@ -254,7 +254,7 @@ export const AICoach: React.FC = () => {
                         <input 
                           type="text" 
                           placeholder="e.g. AI Research Engineer at Google"
-                          className="w-full bg-slate-950/60 border border-white/5 rounded-[2.5rem] p-8 text-white focus:ring-4 focus:ring-indigo-500/10 focus:outline-none font-bold text-lg shadow-inner"
+                          className="w-full bg-slate-950/60 border border-white/5 rounded-[2.5rem] p-5 sm:p-8 text-white focus:ring-4 focus:ring-indigo-500/10 focus:outline-none font-bold text-base sm:text-lg shadow-inner"
                           value={targetRole}
                           onChange={(e) => setTargetRole(e.target.value)}
                         />
@@ -263,7 +263,7 @@ export const AICoach: React.FC = () => {
                         <label className="mono text-[10px] font-black uppercase tracking-widest text-slate-600 ml-4">Current Knowledge Base</label>
                         <textarea 
                           placeholder="List your primary languages, tools, and experience level..."
-                          className="w-full bg-slate-950/60 border border-white/5 rounded-[2.5rem] p-8 text-white focus:ring-4 focus:ring-indigo-500/10 focus:outline-none font-bold text-lg h-48 resize-none shadow-inner"
+                          className="w-full bg-slate-950/60 border border-white/5 rounded-[2.5rem] p-5 sm:p-8 text-white focus:ring-4 focus:ring-indigo-500/10 focus:outline-none font-bold text-base sm:text-lg h-40 sm:h-48 resize-none shadow-inner"
                           value={currentSkills}
                           onChange={(e) => setCurrentSkills(e.target.value)}
                         />

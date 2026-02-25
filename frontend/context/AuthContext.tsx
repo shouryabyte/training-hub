@@ -1,14 +1,30 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getAuthToken, setAuthToken, clearAuthToken, clearAccessToken, hasAuthSession } from '../services/apiClient';
-import { login as apiLogin, logout as apiLogout, register as apiRegister, refresh as apiRefresh, AuthUser } from '../services/authService';
+import {
+  login as apiLogin,
+  logout as apiLogout,
+  register as apiRegister,
+  refresh as apiRefresh,
+  googleLogin as apiGoogleLogin,
+  AuthResponse,
+  AuthUser,
+} from '../services/authService';
 import { decodeJwt } from '../utils/jwt';
 
 type AuthState = {
   token: string | null;
   user: AuthUser | null;
   isReady: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
-  register: (name: string, email: string, password: string, adminInviteKey?: string, teacherInviteKey?: string) => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role?: 'ADMIN' | 'TEACHER' | 'STUDENT',
+    adminInviteKey?: string,
+    teacherInviteKey?: string
+  ) => Promise<AuthResponse>;
+  googleLogin: (credential: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
 };
 
@@ -88,19 +104,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isReady,
       login: async (email, password) => {
         const r = await apiLogin({ email, password });
-        setAuthToken(r.token);
-        setToken(r.token);
-        setUser(r.user);
-        saveUser(r.user);
-        return r.user;
+        if (r?.token) {
+          setAuthToken(r.token);
+          setToken(r.token);
+        }
+        if (r?.user) {
+          setUser(r.user);
+          saveUser(r.user);
+        }
+        return r;
       },
-      register: async (name, email, password, adminInviteKey, teacherInviteKey) => {
-        const r = await apiRegister({ name, email, password, adminInviteKey, teacherInviteKey });
-        setAuthToken(r.token);
-        setToken(r.token);
-        setUser(r.user);
-        saveUser(r.user);
-        return r.user;
+      register: async (name, email, password, role, adminInviteKey, teacherInviteKey) => {
+        const r = await apiRegister({ name, email, password, role, adminInviteKey, teacherInviteKey });
+        if (r?.token) {
+          setAuthToken(r.token);
+          setToken(r.token);
+        }
+        if (r?.user) {
+          setUser(r.user);
+          saveUser(r.user);
+        }
+        return r;
+      },
+      googleLogin: async (credential) => {
+        const r = await apiGoogleLogin({ credential });
+        if (r?.token) {
+          setAuthToken(r.token);
+          setToken(r.token);
+        }
+        if (r?.user) {
+          setUser(r.user);
+          saveUser(r.user);
+        }
+        return r;
       },
       logout: async () => {
         try {

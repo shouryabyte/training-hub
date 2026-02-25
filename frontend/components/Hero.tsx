@@ -7,7 +7,7 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ onStartClick }) => {
   return (
-    <header className="relative pt-40 pb-24 px-6 overflow-hidden min-h-[90vh] flex items-center">
+    <header className="relative pt-28 sm:pt-36 lg:pt-40 pb-20 sm:pb-24 px-4 sm:px-6 overflow-hidden min-h-[90vh] flex items-center">
       {/* Background Video Layer */}
       <div className="absolute inset-0 z-0">
         <video 
@@ -35,12 +35,12 @@ export const Hero: React.FC<HeroProps> = ({ onStartClick }) => {
           Engineering the Future of Talent
         </div>
         
-        <h1 className="text-6xl md:text-8xl font-black mb-8 leading-[1.1] tracking-tight text-white">
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-8 leading-[1.1] tracking-tight text-white">
           Code the Next <br />
           <span className="gradient-text">Great Product.</span>
         </h1>
         
-        <p className="text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-medium">
+        <p className="text-base sm:text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto mb-10 sm:mb-12 leading-relaxed font-medium">
           Whether you're in high school aiming for an <span className="text-emerald-400">Ivy League</span> or a university student targeting a <span className="text-indigo-400">FAANG role</span>, Nexchakra is your ultimate career launchpad.
         </p>
         

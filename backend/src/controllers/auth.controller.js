@@ -66,6 +66,7 @@ async function issueTokensForUser({ user, req, res }) {
 async function register(req, res) {
   try {
     const { name, email, password } = req.validated.body;
+    const requestedRole = String(req.validated.body.role || "").trim().toUpperCase();
     const adminInviteKey = String(req.validated.body.adminInviteKey || "").trim();
     const teacherInviteKey = String(req.validated.body.teacherInviteKey || "").trim();
 
@@ -77,21 +78,52 @@ async function register(req, res) {
     if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
     let role = "STUDENT";
-    if (adminInviteKey) {
+
+    // Role-select signup is supported, but still invite-gated for ADMIN/TEACHER.
+    if (requestedRole === "ADMIN") {
+      if (!adminInviteKey) return res.status(403).json({ message: "Admin invite key is required" });
       if (adminInviteKey !== String(process.env.ADMIN_INVITE_KEY || "").trim()) {
         return res.status(403).json({ message: "Invalid admin invite key" });
       }
       role = "ADMIN";
-    }
-    if (teacherInviteKey) {
+    } else if (requestedRole === "TEACHER") {
+      if (!teacherInviteKey) return res.status(403).json({ message: "Teacher invite key is required" });
       if (teacherInviteKey !== String(process.env.TEACHER_INVITE_KEY || "").trim()) {
         return res.status(403).json({ message: "Invalid teacher invite key" });
       }
       role = "TEACHER";
+    } else if (requestedRole === "STUDENT" || !requestedRole) {
+      role = "STUDENT";
+    } else {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    // Backward-compatible invite-key-only signup if role wasn't provided.
+    if (!requestedRole) {
+      if (adminInviteKey) {
+        if (adminInviteKey !== String(process.env.ADMIN_INVITE_KEY || "").trim()) {
+          return res.status(403).json({ message: "Invalid admin invite key" });
+        }
+        role = "ADMIN";
+      } else if (teacherInviteKey) {
+        if (teacherInviteKey !== String(process.env.TEACHER_INVITE_KEY || "").trim()) {
+          return res.status(403).json({ message: "Invalid teacher invite key" });
+        }
+        role = "TEACHER";
+      }
     }
 
     const hashedPassword = await hashPassword(password);
-    const user = await User.create({ name, email, password: hashedPassword, role });
+
+    const requireVerify = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+    const user = await User.create({ name, email, password: hashedPassword, role, emailVerified: !requireVerify, authProvider: "local" });
+
+    if (requireVerify) {
+      return res.status(201).json({
+        message: "Registration created. Verify email to continue.",
+        verificationRequired: true,
+      });
+    }
 
     const token = await issueTokensForUser({ user, req, res });
 
@@ -113,6 +145,10 @@ async function login(req, res) {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.emailVerified) {
+      return res.status(403).json({ message: "Email not verified", verificationRequired: true });
+    }
 
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
